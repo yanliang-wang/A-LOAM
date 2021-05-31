@@ -22,6 +22,9 @@ find_package(catkin REQUIRED COMPONENTS
 find_package(PCL REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(Ceres REQUIRED)
+add_definitions(${PCL_DEFINITIONS})
+link_directories(${PCL_LIBRARY_DIRS})
+message("PCL_LIBRARY_DIRS is "${PCL_LIBRARY_DIRS})
 
 include_directories(
   include

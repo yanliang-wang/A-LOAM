@@ -22,5 +22,8 @@
     <group if="$(arg rviz)">
         <node launch-prefix="nice" pkg="rviz" type="rviz" name="rviz" args="-d $(find aloam_velodyne)/rviz_cfg/aloam_velodyne.rviz" />
     </group>
+    <node pkg="rosbag" type="play" name="play" args=" /media/wang/4fe04659-7176-442d-8068-35d5d49ba5e9/datasets/LOAM/loam_velodyne/nsh_indoor_outdoor.bag"/>
+
+    <!-- <node pkg="tf" type="static_transform_publisher" name="velodyne_to_odom" args="0 0 0 0 0 0  velodyne aft_mapped 100  " /> -->
 
 </launch>

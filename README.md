@@ -1,9 +1,46 @@
+## 0. INTRODUCTION
+
+**This repository is forked from A-LOAM, and I added some Chinese comments and the demo of RS-Ruby Lite(80-beam) in the code.** 
+
+LOAM is a very simple but wonderful SLAM algorithm for line scan LiDAR. It only requires the x,y,z channel of the point cloud and it can support any pose of LiDAR theoretically without any modification. I think the only modification to apply LOAM to your LiDAR is to add the info(vertical resolution, number of scans, etc.) of your LiDAR to the code, which guarantees LOAM can know the scan id of every point. **The demo of RS-Ruby Lite** introduces how to add the info of Lidar to the code.
+
+##  How to add the info of LiDAR
+
+First, print the angle of every point.(comment 214~229 and  uncomment line 231~240 in `scanRegistration.cpp` ).We can get the angle of every point.
+
+```
+current angle:  -24.5978        -27.969
+current angle:  -23.6955        0.902229
+current angle:  -22.7933        0.902225
+current angle:  -21.8911        0.902229
+current angle:  -20.9889        0.902227
+current angle:  -20.0866        0.902225
+current angle:  -19.1844        0.902227
+current angle:  -18.2822        0.902227
+current angle:  -17.38  		0.902229
+current angle:  -16.4777        0.902227
+...
+```
+
+Next, design the computation of `scanId` according to the angles. (line 231~240)
+
+That's all.
+
+The result of RS-Ruby Lite is as follows.
+
+![](./picture/rs-ruby_demo.png)
+
+
+
+## The original README.md of A-LOAM is as follows.
+
 # A-LOAM
+
 ## Advanced implementation of LOAM
 
 A-LOAM is an Advanced implementation of LOAM (J. Zhang and S. Singh. LOAM: Lidar Odometry and Mapping in Real-time), which uses Eigen and Ceres Solver to simplify code structure. This code is modified from LOAM and [LOAM_NOTED](https://github.com/cuitaixiang/LOAM_NOTED). This code is clean and simple without complicated mathematical derivation and redundant operations. It is a good learning material for SLAM beginners.
 
-<img src="https://github.com/HKUST-Aerial-Robotics/A-LOAM/blob/devel/picture/kitti.png" width = 55% height = 55%/>
+<img src="./picture/kitti.png" width = 55% height = 55%/>
 
 **Modifier:** [Tong Qin](http://www.qintonguav.com), [Shaozu Cao](https://github.com/shaozu)
 
@@ -48,7 +85,7 @@ Download [KITTI Odometry dataset](http://www.cvlibs.net/datasets/kitti/eval_odom
     roslaunch aloam_velodyne aloam_velodyne_HDL_64.launch
     roslaunch aloam_velodyne kitti_helper.launch
 ```
-<img src="https://github.com/HKUST-Aerial-Robotics/A-LOAM/blob/devel/picture/kitti_gif.gif" width = 720 height = 351 />
+<img src="./picture/kitti_gif.gif" width = 720 height = 351 />
 
 ## 5. Docker Support
 To further facilitate the building process, we add docker in our code. Docker environment is like a sandbox, thus makes our code environment-independent. To run with docker, first make sure [ros](http://wiki.ros.org/ROS/Installation) and [docker](https://docs.docker.com/install/linux/docker-ce/ubuntu/) are installed on your machine. Then add your account to `docker` group by `sudo usermod -aG docker $YOUR_USER_NAME`. **Relaunch the terminal or logout and re-login if you get `Permission denied` error**, type:

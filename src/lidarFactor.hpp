@@ -32,10 +32,10 @@ struct LidarEdgeFactor
 		Eigen::Matrix<T, 3, 1> lp;
 		lp = q_last_curr * cp + t_last_curr;
 
-		Eigen::Matrix<T, 3, 1> nu = (lp - lpa).cross(lp - lpb);
+		Eigen::Matrix<T, 3, 1> nu = (lp - lpa).cross(lp - lpb);	//叉乘表示 两个边组成平行四边形的面积
 		Eigen::Matrix<T, 3, 1> de = lpa - lpb;
 
-		residual[0] = nu.x() / de.norm();
+		residual[0] = nu.x() / de.norm();	//叉乘再除以底边，点到直线距离的2倍
 		residual[1] = nu.y() / de.norm();
 		residual[2] = nu.z() / de.norm();
 
