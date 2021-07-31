@@ -69,6 +69,13 @@ int cloudSortInd[400000];
 int cloudNeighborPicked[400000];    //点是否被筛选过标志：0-未筛选过，1-筛选过
 int cloudLabel[400000];             //点分类标号:2-代表曲率很大，1-代表曲率比较大,-1-代表曲率很小，0-曲率比较小(其中1包含了2,0包含了-1,0和1构成了点云全部的点)
 
+// 自定义参数 for filter
+int radius_filter_enable = 0;
+float ROI_R_min = 0;
+float ROI_R_max = 200;
+int voxel_downsample_enable = 0;
+float voxel_leaf_size = 0.15;
+
 bool comp (int i,int j) { return (cloudCurvature[i]<cloudCurvature[j]); }
 
 ros::Publisher pubLaserCloud;
@@ -133,6 +140,49 @@ void laserCloudHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg)
 
     pcl::PointCloud<pcl::PointXYZ> laserCloudIn;
     pcl::fromROSMsg(*laserCloudMsg, laserCloudIn);
+
+    //// 自定义的filter
+    // voxel grid downsampling
+    pcl::PointCloud<pcl::PointXYZ>::Ptr temp_cloud2(new pcl::PointCloud<pcl::PointXYZ>);
+    int print_log_enable = laserCloudMsg->header.seq % 10;
+    if(voxel_downsample_enable == 1){
+        pcl::VoxelGrid<pcl::PointXYZ> vg;
+        vg.setInputCloud(laserCloudIn.makeShared());
+        vg.setLeafSize(voxel_leaf_size, voxel_leaf_size, voxel_leaf_size);
+        vg.filter(*temp_cloud2);
+        if(! print_log_enable)
+        {
+            ROS_INFO("Lidar cloud after voxel filtering has %d points.", temp_cloud2->size() );
+        }
+        pcl::copyPointCloud(*temp_cloud2, laserCloudIn);
+        temp_cloud2->clear();
+    }
+
+    // 柱型滤波
+    if(radius_filter_enable == 1 && ROI_R_max >= ROI_R_min &&
+        ROI_R_max >= 0 && ROI_R_min >= 0)
+    {
+
+        float ROI_R_max_2 = ROI_R_max * ROI_R_max;
+        float ROI_R_min_2 = ROI_R_min * ROI_R_min;
+        float dis;
+        for(const auto p : laserCloudIn.points)
+        {
+            dis = p.x*p.x + p.y*p.y;
+            if(dis <= ROI_R_max_2 && dis >= ROI_R_min_2)
+            {
+                temp_cloud2->points.push_back(p);
+            }
+        }
+        pcl::copyPointCloud(*temp_cloud2, laserCloudIn);
+        temp_cloud2->clear();
+        if(! print_log_enable)
+        {
+            ROS_INFO("Lidar cloud after radius filtering has %d points.", laserCloudIn.size() );
+        }
+    }
+
+
     std::vector<int> indices;
 
     pcl::removeNaNFromPointCloud(laserCloudIn, laserCloudIn, indices);
@@ -470,31 +520,31 @@ void laserCloudHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg)
     sensor_msgs::PointCloud2 laserCloudOutMsg;
     pcl::toROSMsg(*laserCloud, laserCloudOutMsg);
     laserCloudOutMsg.header.stamp = laserCloudMsg->header.stamp;
-    laserCloudOutMsg.header.frame_id = "/camera_init";
+    laserCloudOutMsg.header.frame_id = "/aft_mapped";
     pubLaserCloud.publish(laserCloudOutMsg);
 
     sensor_msgs::PointCloud2 cornerPointsSharpMsg;
     pcl::toROSMsg(cornerPointsSharp, cornerPointsSharpMsg);
     cornerPointsSharpMsg.header.stamp = laserCloudMsg->header.stamp;
-    cornerPointsSharpMsg.header.frame_id = "/camera_init";
+    cornerPointsSharpMsg.header.frame_id = "/aft_mapped";
     pubCornerPointsSharp.publish(cornerPointsSharpMsg);
 
     sensor_msgs::PointCloud2 cornerPointsLessSharpMsg;
     pcl::toROSMsg(cornerPointsLessSharp, cornerPointsLessSharpMsg);
     cornerPointsLessSharpMsg.header.stamp = laserCloudMsg->header.stamp;
-    cornerPointsLessSharpMsg.header.frame_id = "/camera_init";
+    cornerPointsLessSharpMsg.header.frame_id = "/aft_mapped";
     pubCornerPointsLessSharp.publish(cornerPointsLessSharpMsg);
 
     sensor_msgs::PointCloud2 surfPointsFlat2;
     pcl::toROSMsg(surfPointsFlat, surfPointsFlat2);
     surfPointsFlat2.header.stamp = laserCloudMsg->header.stamp;
-    surfPointsFlat2.header.frame_id = "/camera_init";
+    surfPointsFlat2.header.frame_id = "/aft_mapped";
     pubSurfPointsFlat.publish(surfPointsFlat2);
 
     sensor_msgs::PointCloud2 surfPointsLessFlat2;
     pcl::toROSMsg(surfPointsLessFlat, surfPointsLessFlat2);
     surfPointsLessFlat2.header.stamp = laserCloudMsg->header.stamp;
-    surfPointsLessFlat2.header.frame_id = "/camera_init";
+    surfPointsLessFlat2.header.frame_id = "/aft_mapped";
     pubSurfPointsLessFlat.publish(surfPointsLessFlat2);
 
     // pub each scam
@@ -505,7 +555,7 @@ void laserCloudHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg)
             sensor_msgs::PointCloud2 scanMsg;
             pcl::toROSMsg(laserCloudScans[i], scanMsg);
             scanMsg.header.stamp = laserCloudMsg->header.stamp;
-            scanMsg.header.frame_id = "/camera_init";
+            scanMsg.header.frame_id = "/aft_mapped";
             pubEachScan[i].publish(scanMsg);
         }
     }
@@ -521,13 +571,20 @@ int main(int argc, char **argv)
     ros::NodeHandle nh;
 
     nh.param<int>("scan_line", N_SCANS, 16);
-
     nh.param<bool>("haveRing", haveRing, false);
-
-
     nh.param<double>("minimum_range", MINIMUM_RANGE, 0.1);
-
     printf("scan line number %d \n", N_SCANS);
+
+    ros::param::get("radius_filter_enable", radius_filter_enable);
+    ros::param::get("ROI_R_min", ROI_R_min);
+    ros::param::get("ROI_R_max", ROI_R_max);
+    ros::param::get("voxel_downsample_enable", voxel_downsample_enable);
+    ros::param::get("voxel_leaf_size", voxel_leaf_size);
+    ROS_INFO("radius_filter_enable = %d", radius_filter_enable);
+    ROS_INFO("ROI_R_min = %f", ROI_R_min);
+    ROS_INFO("ROI_R_max = %f", ROI_R_max);
+    ROS_INFO("voxel_downsample_enable = %d", voxel_downsample_enable);
+    ROS_INFO("voxel_leaf_size = %f", voxel_leaf_size);
 
     if(N_SCANS != 16 && N_SCANS != 32 && N_SCANS != 64 && N_SCANS != 80)
     {
